@@ -12,30 +12,32 @@ import Register from "./pages/Register";
 import Playlist from "./pages/Playlist";
 
 //Importing Contexts
-import { SidebarContextState } from "./Context/SibebarContext";
+
+
+import { SidebarProvider } from "./Context/SidebarContext"; 
 import { SongContextState } from "./Context/SongContext";
 import { QueueContextState } from "./Context/QueueContex";
 import { FetchContextState } from "./Context/FetchContext";
 
-//General Layout
+
 const Layout = () => {
   return (
     <div className="relative z-0 w-screen">
-      <SidebarContextState>
+      <SidebarProvider> {/* <-- fixed name here */}
         <SongContextState>
           <FetchContextState>
             <Navbar />
             <QueueContextState>
-            <div className="">
-              <Outlet />
-            </div>
-            <div className="">
-              <AudioPlayer />
-            </div>
+              <div className="">
+                <Outlet />
+              </div>
+              <div className="">
+                <AudioPlayer />
+              </div>
             </QueueContextState>
           </FetchContextState>
         </SongContextState>
-      </SidebarContextState>
+      </SidebarProvider>
     </div>
   );
 };

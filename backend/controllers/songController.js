@@ -1,163 +1,189 @@
-import conn from "../config/db.js";
+import { connectToMongo, getDB } from "../db.js";
 import fs from "fs";
+import path from "path";
 import mongodb from "mongodb";
-
-// @desc    Add a new song
-// @route   POST /api/v1/song/upload
-// @access  Private
+import { ObjectId } from "mongodb";
+import User from "../models/songSchema.js";
 export const addSong = async (req, res) => {
   try {
-    // getting the data from the request body
-    const { title, artist, album, description } = req.body;
+    const { title, artist, album, description, thumbnail } = req.body;
+    const file = req.file;
 
-    // if any of the fields are empty throw an error
-    if (!title || !artist || !album || !description) {
-      res.status(400);
-      throw new Error("Please add all fields");
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // connction to the database
-    const db = conn.db("music_streaming");
+    await connectToMongo();
+    const db = getDB();
     const collection = db.collection("songs");
-    const bucket = new mongodb.GridFSBucket(db, {
-      bucketName: "uploads",
-    });
 
-    // uploading the file to the database
-    const readStream = fs
-      .createReadStream(req.file.path)
-      .pipe(bucket.openUploadStream(req.file.filename));
+    const newSong = {
+      title,
+      artist,
+      album,
+      description,
+      thumbnail,
+      filePath: file.path, // local path
+      originalName: file.originalname,
+      uploadedBy: req.userId,
+    };
 
-    // if there is an error throw an error
-    readStream.on("error", (error) => {
-      throw error;
-    });
+    await collection.insertOne(newSong);
 
-    // if the file is uploaded successfully delete the file from the uploads folder
-    // and insert the song data to the database
-    readStream.on("finish", async () => {
-      console.log("finished");
-      const song = await collection.insertOne({
-        title,
-        artist,
-        album,
-        description,
-        uploadedBy: req.userId,
-        song: req.file.filename,
-        file: readStream.id,
-      });
-      if (song) {
-        res
-          .status(201)
-          .json({ message: "Song added successfully", status: "success" });
-      } else {
-        res.status(400);
-        throw new Error("Invalid song data");
-      }
-    });
+    return res.status(201).json({ message: "Song uploaded", song: newSong });
   } catch (error) {
-    console.log(error);
-    
-    return res.json({ error: error.message });
+    console.error("Error in addSong:", error.message);
+    return res.status(500).json({ error: "Server error" });
   }
 };
+
+
+
 
 //@desc   Delete a song
 //@route  DELETE /api/v1/song/delete/:id
 //@access Private
+
+
 export const deleteSong = async (req, res) => {
   try {
-    console.log("hitting the server");
-    console.log(req.query.file);
     const { id } = req.params;
-    if (!id) {
-      res.status(400);
-      throw new Error("No id provided");
-    }
-   
-    const db = conn.db("music_streaming");
-    const collection = db.collection("songs");
-    const bucket = new mongodb.GridFSBucket(db, {
-      bucketName: "uploads",
-    });
 
-    const song = await collection.findOne({ _id: new mongodb.ObjectId(id) });
+    await connectToMongo();
+    const db = getDB();
+    const collection = db.collection("songs");
+
+    const song = await collection.findOne({ _id: new ObjectId(id) });
+
     if (!song) {
-      res.status(404);
-      throw new Error("Song not found");
+      return res.status(404).json({ error: "Song not found" });
     }
-    if (song.uploadedBy !== req.userId) {
-      res.status(401);
-      throw new Error("Unauthorized");
+
+    // Optional: Check if the logged-in user is the uploader
+    if (song.uploadedBy.toString() !== req.userId) {
+      return res.status(403).json({ error: "Unauthorized" });
     }
-    const deleteSong = await collection.deleteOne({
-      _id: new mongodb.ObjectId(id),
-    });
-    if (deleteSong) {
-      await bucket.delete(new mongodb.ObjectId(req.query.file));
-      res
-        .status(200)
-        .json({ message: "Song deleted successfully", status: "success" });
-    } else {
-      res.status(400);
-      throw new Error("Error deleting song");
+    
+    // Delete song file from local storage if necessary
+    if (fs.existsSync(song.filePath)) {
+      fs.unlinkSync(song.filePath); // Remove file
     }
+
+    await collection.deleteOne({ _id: new ObjectId(id) });
+
+    return res.status(200).json({ message: "Song deleted successfully" });
   } catch (error) {
-    console.log(error);
-    return res.json({ error: error.message, status: "error" });
+    console.error("Error in deleteSong:", error.message);
+    return res.status(500).json({ error: "Server error" });
   }
 };
-
 // @desc    Get all songs
 // @route   GET /api/v1/songs
 // @access  Public
 export const getSongs = async (req, res) => {
   try {
-   
-    const db = conn.db("music_streaming");
+    await connectToMongo(); // Connect first
+    const db = getDB(); // Get DB instance
     const collection = db.collection("songs");
+   // if you don't exclude fields
+
     const songs = await collection.find({}).toArray();
+
     if (songs.length === 0) {
-      res.status(404);
-      throw new Error("No songs found");
+      return res.status(404).json({ error: "No songs found" });
     }
-    res.status(200).json({ songs });
+
+    return res.status(200).json({ songs });
   } catch (error) {
-    console.log(error);
-    return res.json({ error: error.message, status: "error" });
+    console.error("Error in getSongs:", error.message);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+// uploadController.js
+
+
+export const uploadSong = async (req, res) => {
+  try {
+    const db = getDB();
+    const collection = db.collection("songs");
+
+    const filePath = req.file.filename; // already includes extension
+    const title = req.body.title || "Untitled";
+
+    const result = await collection.insertOne({
+      title,
+      filePath, // e.g., 123abc.mp3
+      uploadedAt: new Date(),
+    });
+
+    res.status(200).json({ message: "Song uploaded", songId: result.insertedId });
+  } catch (err) {
+    console.error("Upload error:", err.message);
+    res.status(500).json({ error: "Failed to upload" });
   }
 };
 
 // @desc: Stream a song
-// @route : GET /api/v1/song/download/:filename
+// http://localhost:1337/api/v1/stream/3178579b71e6ebc526cf0d360eca8401
 // @access  Public
+
+// @route GET /api/v1/stream/:filename
+
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export const streamSong = async (req, res) => {
   try {
-    // if no file name is provided throw an error
-    if (!req.params.filename) {
-      res.status(400);
-      throw new Error("No file name provided");
+    const { id } = req.params;
+
+    console.log("Streaming song ID:", id);
+
+    const db = getDB();
+    const collection = db.collection("songs");
+
+    const song = await collection.findOne({ _id: new ObjectId(id) });
+    console.log("Fetched song from DB:", song);
+
+    if (!song) return res.status(404).json({ error: "Song not found" });
+    
+    const relativePath = song.filePath.replace(/^uploads[\\/]/, "");
+    const filePath = path.resolve(__dirname, "../uploads", relativePath);
+ 
+    console.log("Resolved file path:", filePath);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "Audio file not found on disk" });
     }
-    // connection to the database and getting the file from the database
-    
-    const db = conn.db("music_streaming");
-    const bucket = new mongodb.GridFSBucket(db, {
-      bucketName: "uploads",
-    });
 
-    // setting the content type of the file
-
-
-    // streaming the file to the client
-    const downloadStream = bucket.openDownloadStreamByName(req.params.filename).pipe(res).on("error", (error) => { throw error; });
-    
-    downloadStream.on("end", () => {
-      res.end();
-    });
-
-    // if there is an error throw an error
+    const readStream = fs.createReadStream(filePath);
+    res.setHeader("Content-Type", "audio/mpeg");
+    readStream.pipe(res);
   } catch (error) {
-    console.log(error.message);
-    return res.json({ error: error.message, status: "error" });
+    console.error("Stream error:", error.message);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+// @desc    List all GridFS files
+// @route   GET /api/v1/song/files
+// @access  Public
+export const listGridFSFiles = async (req, res) => {
+  try {
+    await connectToMongo(); // Reuse your Mongo connection utility
+    const db = getDB();
+    const bucket = new mongodb.GridFSBucket(db, { bucketName: "uploads" });
+
+    const files = await bucket.find().toArray();
+
+    if (!files || files.length === 0) {
+      return res.status(404).json({ message: "No files found in GridFS" });
+    }
+
+    return res.status(200).json({ files });
+  } catch (error) {
+    console.error("Error listing files:", error.message);
+    return res.status(500).json({ error: "Server error while listing files" });
   }
 };

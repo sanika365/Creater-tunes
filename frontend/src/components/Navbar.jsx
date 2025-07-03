@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { SidebarContext } from "../Context/SibebarContext";
+import { SidebarContext } from "../Context/SidebarContext";
 import { Link, useNavigate } from "react-router-dom";
 import { GoHome } from "react-icons/go";
 import { ImBlog } from "react-icons/im";

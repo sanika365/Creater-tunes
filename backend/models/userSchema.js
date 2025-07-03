@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  playLists: [
+  playlists: [
     {
       listName: { type: String, required: true, trim: true },
       state: { type: Boolean, default: false },

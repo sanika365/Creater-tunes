@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { SidebarContext } from "../Context/SibebarContext";
+import { SidebarContext } from "../Context/SidebarContext";
 import bg from "../assets/bg4.jpg";
 import '../utils/style.css'
 import { Link } from "react-router-dom";

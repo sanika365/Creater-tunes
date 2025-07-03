@@ -1,94 +1,103 @@
-import React, { useEffect, useState,useContext } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { FetchContext } from "../Context/FetchContext";
 import { SongContext } from "../Context/SongContext";
-import PlaylilstSong from "../components/PlaylilstSong";
+import PlaylistSong from "../components/PlaylistSong";
 import { MdDeleteForever } from "react-icons/md";
 
 const Playlist = () => {
-  const { id } = useParams();  //gettnig the id from the url
-  const navigate = useNavigate(); // for navigation
-  const [playList, setPlayList] = useState(null); // state for the playlist
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [playList, setPlayList] = useState(null);
   const [loading, setLoading] = useState(false);
-  const {fetchPlaylist} = useContext(FetchContext)
-  const {__URL__} = useContext(SongContext)
-  
-  // headers for the api calls
+  const { fetchPlaylist } = useContext(FetchContext);
+  const { __URL__ } = useContext(SongContext);
+
+  // 1️⃣ Pull the token
+  const token = localStorage.getItem("access_token");
+
+  // 2️⃣ Build headers
   const headers = {
     "Content-Type": "application/json",
-    "X-Auth-Token": localStorage.getItem("access_token"),
+    Authorization: token ? `Bearer ${token}` : "",
   };
 
-  // delete playlist
+  // Delete playlist
   const deletePlaylist = async () => {
     setLoading(true);
-    const { data, status } = await axios.delete(
-      `https://music-player-app-backend-yq0c.onrender.com/api/v1/playlist/delete/${id}`,
-      { headers }
-    );
-    if (status === 200) {
+    try {
+      const { status } = await axios.delete(
+        `${__URL__}/api/v1/playlist/${id}`,
+        { headers }
+      );
+      if (status === 200) {
+        alert("Playlist deleted successfully");
+        navigate("/playlists");
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || "Delete failed");
+    } finally {
       setLoading(false);
-      alert("Playlist deleted successfully");
-      navigate("/playlists");
     }
   };
 
-  // confirm delete and handle delete
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this playlist?")) {
       deletePlaylist();
     }
   };
 
-  // get playlist
+  // Get one playlist
   const getPlaylist = async () => {
-    const { data } = await axios.get(
-      `${__URL__}/api/v1/playlist/${id}`,
-      { headers }
-    );
-    setPlayList(data["playlist"]);
+    try {
+      const { data } = await axios.get(
+        `${__URL__}/api/v1/playlist/${id}`,
+        { headers }
+      );
+      setPlayList(data.playlist);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || "Fetch failed");
+    }
   };
 
-  // fetch playlist on load
   useEffect(() => {
     getPlaylist();
   }, [fetchPlaylist]);
 
-  return loading || playList === null ? (
-    <div>Loading...</div>
-  ) : !loading && playList !== null ? (
+  if (loading || !playList) return <div>Loading...</div>;
+
+  return (
     <div className="bg-slate-800 text-white p-5 min-h-screen space-y-5 flex flex-col lg:items-center">
       <div className="lg:mt-10 flex justify-between items-center px-1 lg:w-[70vw]">
         <div>
           <h2 className="text-xl lg:text-4xl">{playList.playlistName}</h2>
-          <p className="text-md lg:text-lg`">Songs - {playList.songs.length} </p>
+          <p className="text-md lg:text-lg">Songs - {playList.songs.length}</p>
         </div>
-        <div>
-          <button onClick={handleDelete}>
-            <MdDeleteForever size={25} />
-          </button>
-        </div>
+        <button onClick={handleDelete}>
+          <MdDeleteForever size={25} />
+        </button>
       </div>
+
       <div className="space-y-2">
         {playList.songs.length === 0 ? (
           <div>No songs in this playlist</div>
         ) : (
-          playList.songs.map((song, index) => {
-            return (
-              <PlaylilstSong
-                key={index}
-                title={song.title}
-                artistName={song.artistName}
-                songSrc={song.songSrc}
-                playlistId={id}
-              />
-            );
-          })
+          playList.songs.map((song, idx) => (
+            <PlaylistSong
+              key={song._id}
+              title={song.title}
+              artistName={song.artistName}
+              songSrc={song.filePath}  // or however you pass stream URL
+              playlistId={id}
+            />
+          ))
         )}
       </div>
     </div>
-  ) : null;
+  );
 };
 
 export default Playlist;

@@ -1,100 +1,145 @@
-import mongodb from "mongodb";
-import conn from "../config/db.js";
+
 
 // @desc   add new playlist
 // @route  POST /api/v1/playlist/create
 // @access Private
+import Playlist from "../models/playlistModel.js";
+
 export const addPlaylist = async (req, res) => {
   try {
-    // Establishing connection to the database
-  
-    const db = conn.db("music_streaming");
-    const collection = db.collection("playlists");
+    console.log("REQ BODY:", req.body);
+    console.log("REQ USER ID:", req.userId);
 
-    // Inserting the playlist to the database
-    const playList = await collection.insertOne({
+    const newPlaylist = new Playlist({
       playlistName: req.body.playlistName,
       createdBy: req.userId,
       songs: [],
     });
-    // If the playlist is added successfully return a success message
-    if (playList) {
-      return res
-        .status(200)
-        .json({ message: "Playlist added successfully", status: "success" });
-    
-    } else throw new Error("Error adding playlist");
+
+    const savedPlaylist = await newPlaylist.save();
+
+    return res
+      .status(200)
+      .json({
+        message: "Playlist added successfully",
+        status: "success",
+        playlist: savedPlaylist,
+      });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).json({ error: error.message, status: "error" });
   }
 };
 
+
 // @desc   Delete a playlist
 // @route  DELETE /api/v1/playlist/delete/:id
 // @access Private
+import mongodb from "mongodb";
+import { getDB } from "../db.js"; // ✅ correctly import getDB
+
 export const deletePlaylist = async (req, res) => {
   try {
-
-    const db = conn.db("music_streaming");
+    const db = getDB(); // ✅ get the native DB object
     const collection = db.collection("playlists");
 
-    const playlist = await collection.deleteOne({
+    const result = await collection.deleteOne({
       _id: new mongodb.ObjectId(req.params.id),
     });
-    if (playlist) {
+
+    if (result.deletedCount === 1) {
       return res
         .status(200)
         .json({ message: "Playlist deleted successfully", status: "success" });
-    } else throw new Error("Error deleting playlist");
+    } else {
+      throw new Error("Error deleting playlist");
+    }
   } catch (error) {
     console.log(error.message);
     return res.json({ error: error.message, status: "error" });
   }
 };
 
+
 // @desc   Add song to playlist
 // @route  POST /api/v1/playlist/add/:id
 // @access Private
+// import Playlist from "../models/playlistModel.js";
+
+import mongoose from "mongoose";
+
+import Song from "../models/songSchema.js"; // if not already imported, import Song model too
+
 export const addSongToPlaylist = async (req, res) => {
   try {
-    
-    const db = conn.db("music_streaming");
-    const collection = db.collection("playlists");
+    const playlistId = req.params.id;
+    const { songId } = req.body;
 
-    const playlist = await collection.findOneAndUpdate(
-      { _id: new mongodb.ObjectId(req.params.id) },
-      { $push: { songs: req.body[0] } }
-    );
-    if (playlist) {
+    if (!mongoose.Types.ObjectId.isValid(songId)) {
       return res
-        .status(200)
-        .json({ message: "Song added to playlist", status: "success" });
-    } else throw new Error("Error adding song to playlist");
+        .status(400)
+        .json({ message: "Invalid songId", status: "error" });
+    }
+
+    const songExists = await Song.findById(songId);
+    if (!songExists) {
+      return res
+        .status(404)
+        .json({ message: "Song not found", status: "error" });
+    }
+
+    const updatedPlaylist = await Playlist.findByIdAndUpdate(
+      playlistId,
+      { $push: { songs: songId } },
+      { new: true }
+    ).populate("songs");
+
+    if (!updatedPlaylist) {
+      return res
+        .status(404)
+        .json({ message: "Playlist not found", status: "error" });
+    }
+
+    return res.status(200).json({
+      message: "Song added successfully to playlist",
+      status: "success",
+      playlist: updatedPlaylist,
+    });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).json({ error: error.message, status: "error" });
   }
-  res.send("Add Song to Playlist Page");
 };
 
 // @desc   Remove song from playlist
 // @route  DELETE /api/v1/playlist/remove/:id
 // @access Private
+
 export const removeSongFromPlaylist = async (req, res) => {
   try {
-   
-    const db = conn.db("music_streaming");
-    const collection = db.collection("playlists");
+    const playlistId = req.params.id;
+    const { songId } = req.body;
 
-    const playlist = await collection.findOneAndUpdate(
-      { _id: new mongodb.ObjectId(req.params.id) },
-      { $pull: { songs: { title: req.query.song } } }
+    const updatedPlaylist = await Playlist.findByIdAndUpdate(
+      playlistId,
+      { $pull: { songs: songId } },
+      { new: true }
     );
-    res.status(200).json({ message: "Song removed from playlist" });
+
+    if (!updatedPlaylist) {
+      return res
+        .status(404)
+        .json({ message: "Playlist not found", status: "error" });
+    }
+
+    return res.status(200).json({
+      message: "Song removed from playlist",
+      status: "success",
+      playlist: updatedPlaylist,
+    });
   } catch (error) {
-    console.log(error);
-    return res.json({ error: error.message, status: "error" });
+    console.error(error);
+    return res.status(500).json({ error: error.message, status: "error" });
   }
 };
 
@@ -103,40 +148,55 @@ export const removeSongFromPlaylist = async (req, res) => {
 // @access Private
 export const getPlaylists = async (req, res) => {
   try {
+    // Fetch playlists created by this user
+    const playlists = await Playlist.find({ createdBy: req.userId })
+      .populate("songs") // optional: populate song details
+      .sort({ createdAt: -1 }); // optional: newest first
 
-    const db = conn.db("music_streaming");
-    const collection = db.collection("playlists");
-    const playlists = await collection
-      .find({ createdBy: req.userId })
-      .toArray();
-    if (playlists.length === 0) {
-      res.status(404);
-      throw new Error("No playlists found");
+    if (!playlists || playlists.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No playlists found", status: "error" });
     }
-    res.status(200).json({ playlists });
+
+    res.status(200).json({ playlists, status: "success" });
   } catch (error) {
-    console.log(error.message);
+    console.error(error.message);
     return res.status(500).json({ error: error.message, status: "error" });
   }
 };
 
-// @desc   Get a playlist
-// @route  GET /api/v1/playlist/:id
-// @access Private
-export const getPlaylist = async (req, res) => {
+
+
+export const getSongsInPlaylist = async (req, res) => {
   try {
+    const playlistId = req.params.id;
 
-    const db = conn.db("music_streaming");
-    const collection = db.collection("playlists");
+    // Validate playlist id
+    if (!playlistId || !mongoose.Types.ObjectId.isValid(playlistId)) {
+      return res
+        .status(400)
+        .json({ message: "Invalid playlist ID", status: "error" });
+    }
 
-    const playlist = await collection.findOne({
-      _id: new mongodb.ObjectId(req.params.id),
-    });
-    if (playlist) {
-      return res.status(200).json({ playlist });
-    } else throw new Error("Error getting playlist");
+    // Fetch playlist and populate songs
+    const playlist = await Playlist.findById(playlistId).populate("songs");
+
+    if (!playlist) {
+      return res
+        .status(404)
+        .json({ message: "Playlist not found", status: "error" });
+    }
+
+    res
+      .status(200)
+      .json({
+        playlistName: playlist.playlistName,
+        songs: playlist.songs,
+        status: "success",
+      });
   } catch (error) {
-    console.log(error);
+    console.error(error.message);
     return res.status(500).json({ error: error.message, status: "error" });
   }
 };

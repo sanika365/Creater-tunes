@@ -22,7 +22,7 @@ const PlaylistCard = ({playlistName,playlistId,noSongs}) => {
         setLoading(true)
         const headers = {
             "Content-Type": "application/json",
-            "X-Auth-Token": localStorage.getItem("access_token"),
+         Authorization: `Bearer ${token}`,
             };
         const {data,status} = await axios.post(`${__URL__}/api/v1/playlist/add/${playlistId}`,list,{headers})
         if(status === 200){
