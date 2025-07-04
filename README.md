@@ -1,62 +1,63 @@
-Music Player Application
-It is a small music player web app using the MERN stack (MongoDB, Express, React, Node.js). The app should allow users to sign up, sign in, select songs from a library, create playlists, play songs, and resume songs from where they left off.
+# 🎧 CreatorTunes
 
-Here's a breakdown of the technologies used, functionality, and how to set it up locally:
+A fullstack audio platform built for independent creators to upload, manage, and stream their music — inspired by Spotify, built with React, Node.js, and MongoDB.
 
-Technologies Used:
-Frontend:
+![CreatorTunes Banner](https://private-user-images.githubusercontent.com/91480902/361145642-8f855e54-56d0-4917-b957-6b0387f50695.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTE2MjY1ODEsIm5iZiI6MTc1MTYyNjI4MSwicGF0aCI6Ii85MTQ4MDkwMi8zNjExNDU2NDItOGY4NTVlNTQtNTZkMC00OTE3LWI5NTctNmIwMzg3ZjUwNjk1LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MDQlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzA0VDEwNTEyMVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTg3NTZlMDcwY2VhODM2MzU0M2EyNjI3OTdlNTVkNmUyMjZmOGE1MDJmNTFjYWUwYWE3MDY1ZWJhZmUwNDUzOTYmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.isiCfgGxle64i_WDoB3YvCfWui4i5KB1zi0SEFbtxHQ)
 
-React.js: For building the user interface.
-Redux: For state management, especially for managing the state of the music player and user authentication.
-Tailwind-CSS: For styling the components and creating a responsive design.
-Axios: For making HTTP requests to the backend.
-Backend:
+---
 
-Node.js: As the runtime environment for the server-side code.
-Express.js: For building the RESTful API that interacts with the frontend.
-MongoDB: As the database for storing user data, playlists, and music information.
-Mongoose: For object data modeling (ODM) to work with MongoDB.
-Authentication:
+## 🚀 Live Demo
+[👉 View the Project](https://regal-naiad-ac5dda.netlify.app/)
 
-JWT (JSON Web Tokens): For user authentication, allowing secure login and session management.
-Music Management:
+---
 
-Spotify API: For fetching music data, including tracks, albums, and artist information.
-Deployment:
 
-For deployment i used render free cloud hosting website.
-Functionality:
-User Authentication: Users can sign up and log in using JWT-based authentication.
-Music Library: Users can browse and search for music tracks and albums using the Spotify API.
-Playlist Management: Users can create, view, and manage their playlists.
-Music Player: Users can play music, with features like play, pause, skip, and volume control.
-Responsive Design: The app is designed to be responsive, working well on both desktop and mobile devices.
-How to Set Up Locally:
-Clone the Repository:
+## 🧩 Features
 
-git clone https://github.com/manni2000/Music-app.git
-cd Music-app
-Install Dependencies:
+### 🔐 **Authentication**
+- Register / Login using secure JWT-based auth
+- Role-based access (Creator vs Listener)
 
-Navigate to the frontend directory and install dependencies:
+### 🎵 **Upload Songs**
+- Users can upload songs & thumbnails directly from their device
+- Local file picker UI with validation
+
+### 🎧 **Audio Player**
+- Integrated player with playback controls
+- Stream songs with real-time updates
+
+### 📁 **Playlists**
+- Create & manage custom playlists
+- Add/remove tracks
+
+### 💻 **Responsive Design**
+- Works smoothly on desktop and mobile devices
+
+---
+
+## 🛠️ Tech Stack
+
+| Frontend | Backend | Database | Misc |
+|----------|---------|----------|------|
+| React.js | Node.js + Express | MongoDB | Tailwind CSS, JWT |
+| React Router | REST API | Mongoose | Vite / CRA |
+
+---
+
+## 📦 Installation
+
+```bash
+# Clone the repo
+git clone https://github.com/sanika365/CreatorTunes.git
+cd CreatorTunes
+
+# Install frontend
 cd frontend
 npm install
-Navigate to the backend directory and install dependencies:
+npm run dev
+
+# Install backend
 cd ../backend
 npm install
-Set Up Environment Variables:
+npm run start
 
-Create a .env file in the backend directory and configure the following environment variables:
-MONGO_URI=your_mongodb_uri
-JWT_SECRET=your_jwt_secret
-Start the Development Server:
-
-Start the backend server:
-cd backend
-node server
-Start the frontend development server:
-cd ../frontend
-npm start
-Access the Application:
-
-Once both servers are running, you can access the application by navigating to http://localhost:1337 in your web browser.
